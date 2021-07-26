@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <title>File Upload</title>
+
+    <script type="text/javascript">
+             function readURL(input, id) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+                    $('#'+id).attr('src', e.target.result);
+                };
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+  </script>
+    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+      <style type="text/css">
+
+  .mainForm{
+    height: 300px;
+    width: 100%;
+
+  }
+.verify{
+    display: flex;
+    justify-content: center;
+    overflow-x: hidden;
+    position: fixed;
+    top: 250px;
+    align-items: center;
+    z-index: 2;
+    height: 50px;
+}
+
+.split {
+  width: 50%;
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  overflow-x: hidden;
+}
+
+/* Control the left side */
+.left {
+  left: 0;
+
+}
+
+/* Control the right side */
+.right {
+  right: 0;
+}
+
+/* If you want the content centered horizontally and vertically */
+.centered {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+  </style>
+  </head>
+  <body>
+    <form  class="mainForm" method="POST" action="" enctype="multipart/form-data">
+        <div class="mainForm split left">
+          <div class="centered">
+            <img id="im1" src="{{ url_for('upload', filename='ind1.jpg') }}" style="width: 100%">
+            <p><input type="file" name="img1" onchange="readURL(this, 'im1');"></p>
+          </div>
+        </div>
+
+        <div class="mainForm split right">
+          <div class="centered">
+            <img id="im2" src="{{ url_for('upload', filename='ind2.jpg') }}" style="width: 100%">
+            <p><input type="file" name="img2" onchange="readURL(this, 'im2');"></p>
+          </div>
+        </div>
+
+        <p class="mainForm verify"><input type="submit" value="Verify" style="padding: 10px 32px; font-size: 16px;"></p>
+    </form>
+
+  </body>
+</html>

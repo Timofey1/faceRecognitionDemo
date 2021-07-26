@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<script type="text/javascript">
+  function reply_click(clicked_id)
+  {
+      document.getElementById("faceNum").value = clicked_id
+  }
+</script>
+
+<style>
+  .button{
+    position: absolute;
+    z-index:1;
+    opacity:50%;
+    margin: 10px;
+  }
+  .img{
+    position: absolute;
+    top:0;
+    left:0;
+    width:600px;
+    margin: 10px;
+  }
+</style>
+<body>
+<img id="image" class="img" src="{{ url_for('upload', filename='chooseFaceFrom.jpg') }}">
+<form method="POST" action="/crop" >
+    <input type="hidden" value="{{objects}}" name="obj">
+    <input type="hidden" id="faceNum" name="faceNum">
+    {% for k in objects.keys() %}
+    <button id="{{k}}" class="button" type="submit" onclick="reply_click(this.id)" style="top:{{objects[k]['facial_area'][1] * 600/width}}px;left: {{objects[k]['facial_area'][0] * 600/width}}px;width:{{(objects[k]['facial_area'][2]-objects[k]['facial_area'][0]) * 600/width}}px;height:{{(objects[k]['facial_area'][3]-objects[k]['facial_area'][1]) * 600/width}}px;"></button>
+    {% endfor %}
+</form>
+</body>
+</html>

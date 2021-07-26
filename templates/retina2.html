@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+<style>
+  .json-response pre {
+    background-color: #2c3444;
+    color: #f8f8f8;
+    border: none;
+    border-radius: 0;
+    padding: 5px 5px 5px;
+    font-size: 11px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -o-pre-wrap;
+}
+pre {
+    display: block;
+    padding: 9.5px;
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.42857143;
+    color: #333;
+    word-break: break-all;
+    word-wrap: break-word;
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+pre {
+    overflow: auto;
+}
+.main{
+display: flex;
+width: 100%
+}
+.json{
+    width: 400px;
+    height: 400px;
+}
+</style>
+</head>
+<body>
+<div class="main">
+    <div style="margin: 10px">
+        <img src="{{ url_for('upload', filename='bbox.jpg') }}" style="height:300px">
+        <h3>Лиц: {{ fc }}</h3>
+    </div>
+  <div class="json-response" style="margin: 10px">
+        <pre class="json" style="" id="json"></pre>
+  </div>
+</div>
+</body>
+<script type="text/javascript">
+var data = '{{ objects }}'
+data = data.replaceAll("&#39;","\"")
+document.getElementById('json').innerHTML = JSON.stringify(JSON.parse(data), null, '  ' );
+</script>
+</html>

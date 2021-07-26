@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add/Search</title>
+    <style>
+        form {
+        display: flex;
+        align-items: center;
+        }
+    </style>
+</head>
+<body>
+<img id="0" style="width:150px;" src="{{ url_for('upload', filename='selected_face.jpg') }}" >
+<form class="addForm" method="POST" action="/doneCrop">
+    <p>Имя: </p><input type="text" name="person" style="margin:5px;">
+    <p><input type="submit" value="Добавить лицо" ></p>
+</form>
+<hr>
+<form class="findForm" method="POST" action="/find">
+    <p>Кол-во похожих лиц: </p><input type="number" name="number" value="3" style="margin:5px;"/>
+    <input type="submit" value="Найти в базе" />
+</form>
+<hr>
+<form action="javascript:history.back()">
+    <input type="submit" value="Назад" />
+</form>
+
+</body>
+</html>

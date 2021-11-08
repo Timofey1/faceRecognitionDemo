@@ -23,98 +23,11 @@ model_inp = 160
 MODEL = InceptionResnetV1(pretrained='vggface2').eval()
 mtcnn = MTCNN(image_size=model_inp)
 
-app.config["MONGO_URI"] = "mongodb://localhost:27017/facesInfo"
+app.config["MONGO_URI"] = "mongodb://localhost:27017/test"
 mongo = PyMongo(app)
+table = mongo.db.info
 
 UPLOAD_API_DIRECTORY = 'api_uploads'
-
-
-class FaceRec(Resource):
-    def post(self):
-        image_post_args = reqparse.RequestParser()
-        image_post_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
-        image_post_args.add_argument("name", type=str, help="Identity name is required", required=True)
-        data = image_post_args.parse_args()
-
-        if data['file'] == "":
-            return {'message': 'No file found', 'status': 'error'}, 404
-
-        photo = data['file'].read()
-        print(type(photo))
-        if photo:
-            img = Image.open(io.BytesIO(photo))
-            try:
-                img_cropped = mtcnn(img)
-                embedding = MODEL(img_cropped.unsqueeze(0))[0].tolist()
-                print("embedding length = ", len(embedding))
-            except Exception:
-                return {'message': 'faces not found', 'status': 'error'}, 404
-
-            faceName = re.sub('[^a-zA-Zа-яА-Я ]+', '', data["name"]).title()
-            faceId = mongo.db.facesInfo.count()+1
-            inserted_res = mongo.db.facesInfo.insert(
-                {"faceId": faceId, "name": faceName, "vector": embedding})
-            return {'message': 'photo uploaded', 'status': 'success', 'id': faceId}, 201
-        return {'message': 'Something went wrong', 'status': 'error'}, 404
-
-    def get(self):
-        image_get_args = reqparse.RequestParser()
-        image_get_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
-        data = image_get_args.parse_args()
-
-        if data['file'] == "":
-            return {'message': 'No file found', 'status': 'error'}, 404
-
-        photo = data['file'].read()
-
-        if photo:
-            img = Image.open(io.BytesIO(photo))
-            try:
-                img_cropped = mtcnn(img)
-                vector = MODEL(img_cropped.unsqueeze(0))[0].tolist()
-                print("embedding length = ", len(vector))
-            except Exception:
-                return {'message': 'faces not found', 'status': 'error'}, 404
-
-            annoyInd = annoy.AnnoyIndex(512, "euclidean")
-            annoyInd.load("annoyIndFile.ann")
-            res = annoyInd.get_nns_by_vector(vector, 3)
-            names = {}
-            for i in res:
-                name = mongo.db.facesInfo.find_one({"faceId": i + 1})["name"]
-                saved_vector = mongo.db.facesInfo.find_one({"faceId": i + 1})["vector"]
-                verification_result = {}
-                for metric in ['euclidean', 'cosine', 'euclidean_l2']:
-                    distance, threshold = compareEmbeddings(vector, saved_vector, metric)
-                    if distance < threshold:
-                        identified = "True"
-                    else:
-                        identified = "False"
-                    resp_obj = {
-                        "verified": identified
-                        , "distance": distance
-                        , "max_threshold_to_verify": threshold
-                    }
-                    verification_result[metric] = resp_obj
-                names[name] = verification_result
-            return names, 201
-        return {'message': 'Something went wrong', 'status': 'error'}, 404
-
-
-
-class DBmethods(Resource):
-    def get(self, faceId):
-        res = mongo.db.facesInfo.find_one({"faceId": faceId})
-        if res is None:
-            return {'message': 'No such id in database', 'status': 'error'}, 404
-        res["faceId"] = str(res["faceId"])
-        return res, 200
-
-    def delete(self, faceId):
-        res = mongo.db.facesInfo.delete_one({"faceId": faceId})
-        mongo.db.facesInfo.find_and_modify(query={"faceId": {"$gt": faceId}},
-                                           update={"$inc": {"faceId": -1}})
-        return res.raw_result, 204
 
 
 class MtcnnApi(Resource):
@@ -123,8 +36,8 @@ class MtcnnApi(Resource):
         retina_post_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
         data = retina_post_args.parse_args()
 
-        if data['file'] == "":
-            return {'message': 'No file found', 'status': 'error'}, 404
+        if data['file'] is None:
+            return {'message': 'File not found', 'status': 'error'}, 404
 
         photo = data['file'].read()
 
@@ -148,14 +61,170 @@ class MtcnnApi(Resource):
             if len(res) == 0:
                 return {"message": "faces not found"}
             else:
-                print(res)
                 return res
+        return {'message': 'Something went wrong', 'status': 'error'}, 404
+    
+class FindFace(Resource):
+    def post(self):
+        image_get_args = reqparse.RequestParser()
+        image_get_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
+        data = image_get_args.parse_args()
+
+        if data['file'] == "":
+            return {'message': 'No file found', 'status': 'error'}, 404
+        try:
+            photo = data['file'].read()
+        except Exception:
+            return {"error": "NoneType object"}, 404
+
+        if photo:
+            img = Image.open(io.BytesIO(photo))
+            try:
+                img_cropped = mtcnn(img)
+                vector = MODEL(img_cropped.unsqueeze(0))[0].tolist()
+            except Exception:
+                return {'message': 'faces not found', 'status': 'error'}, 404
+
+            annoyInd = annoy.AnnoyIndex(512, "euclidean")
+            annoyInd.load("annoyIndFile.ann")
+            res = annoyInd.get_nns_by_vector(vector, 3)
+            names = {}
+            for ind, i in enumerate(res):
+                tmp = {}
+                face_ind = "face_"+str(ind+1)
+                name = table.find_one({"faceId": i + 1})["name"]
+                saved_vector = table.find_one({"faceId": i + 1})["vector"]
+                verification_result = {}
+                for metric in ['euclidean', 'cosine', 'euclidean_l2']:
+                    distance, threshold = compareEmbeddings(vector, saved_vector, metric)
+                    if distance < threshold:
+                        identified = "True"
+                    else:
+                        identified = "False"
+                    resp_obj = {
+                        "verified": identified
+                        , "distance": distance
+                        , "max_threshold_to_verify": threshold
+                    }
+                    verification_result[metric] = resp_obj
+                tmp[name] = verification_result
+                names[face_ind] = tmp
+            return names, 201
+        return {'message': 'Something went wrong', 'status': 'error'}, 404
+
+    
+class FaceRec(Resource):
+    def post(self):
+        image_post_args = reqparse.RequestParser()
+        image_post_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
+        image_post_args.add_argument("name", type=str, help="Identity name is required", required=True)
+        data = image_post_args.parse_args()
+        try:
+            fileName = str(data['file']).split(" ")[1]
+        except Exception:
+            fileName = "Name not found"
+        if data['file'] is None:
+            return {'message': 'File not found', 'status': 'error'}, 404
+
+        photo = data['file'].read()
+        if photo:
+            img = Image.open(io.BytesIO(photo))
+            try:
+                img_cropped = mtcnn(img)
+                embedding = MODEL(img_cropped.unsqueeze(0))[0].tolist()
+            except Exception:
+                return {'message': 'faces not found', 'status': 'error'}, 404
+
+            faceName = re.sub('[^a-zA-Zа-яА-Я ]+', '', data["name"]).title()
+            faceId = table.count()+1
+            inserted_res = table.insert(
+                {"faceId": faceId, "name": faceName,"imageName": fileName, "vector": embedding})
+
+            annoyInd = annoy.AnnoyIndex(512, "euclidean")
+            for i, row in enumerate(table.find()):
+                vector = row["vector"]
+                annoyInd.add_item(i, vector)
+            annoyInd.build(15)
+            annoyInd.save("annoyIndFile.ann")
+
+            return {'message': 'photo uploaded', 'status': 'success', 'id': faceId}, 201
+        return {'message': 'Something went wrong', 'status': 'error'}, 404
+
+    def get(self):
+        image_get_args = reqparse.RequestParser()
+        image_get_args.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
+        data = image_get_args.parse_args()
+
+        if data['file'] == "":
+            return {'message': 'No file found', 'status': 'error'}, 404
+        try:
+            photo = data['file'].read()
+        except Exception:
+            return {"error": "NoneType object"}, 404
+
+        if photo:
+            img = Image.open(io.BytesIO(photo))
+            try:
+                img_cropped = mtcnn(img)
+                vector = MODEL(img_cropped.unsqueeze(0))[0].tolist()
+            except Exception:
+                return {'message': 'faces not found', 'status': 'error'}, 404
+
+            annoyInd = annoy.AnnoyIndex(512, "euclidean")
+            annoyInd.load("annoyIndFile.ann")
+            res = annoyInd.get_nns_by_vector(vector, 3)
+            names = {}
+            for ind, i in enumerate(res):
+                tmp = {}
+                face_ind = "face_"+str(ind+1)
+                name = table.find_one({"faceId": i + 1})["name"]
+                saved_vector = table.find_one({"faceId": i + 1})["vector"]
+                verification_result = {}
+                for metric in ['euclidean', 'cosine', 'euclidean_l2']:
+                    distance, threshold = compareEmbeddings(vector, saved_vector, metric)
+                    if distance < threshold:
+                        identified = "True"
+                    else:
+                        identified = "False"
+                    resp_obj = {
+                        "verified": identified
+                        , "distance": distance
+                        , "max_threshold_to_verify": threshold
+                    }
+                    verification_result[metric] = resp_obj
+                tmp[name] = verification_result
+                names[face_ind] = tmp
+            return names, 201
         return {'message': 'Something went wrong', 'status': 'error'}, 404
 
 
-api.add_resource(FaceRec, '/photoUpl')
-api.add_resource(DBmethods, '/dbApi/<int:faceId>')
-api.add_resource(MtcnnApi, '/mtcnnFaceApi')
+class DBmethods(Resource):
+    def get(self, faceId):
+        res = table.find_one({"faceId": faceId})
+        del res["_id"]
+        if res is None:
+            return {'message': 'No such id in database', 'status': 'error'}, 404
+        res["faceId"] = str(res["faceId"])
+        return res, 200
+
+    def delete(self, faceId):
+        res = table.delete_one({"faceId": faceId})
+        table.update_many({"faceId": {"$gt": faceId}}, {"$inc": {"faceId": -1}})
+
+        #update annoy
+        annoyInd = annoy.AnnoyIndex(512, "euclidean")
+        for i, row in enumerate(table.find()):
+            vector = row["vector"]
+            annoyInd.add_item(i, vector)
+        annoyInd.build(15)
+        annoyInd.save("annoyIndFile.ann")
+
+        return 200
+
+api.add_resource(MtcnnApi, '/detect')
+api.add_resource(FaceRec, '/api')
+api.add_resource(DBmethods, '/db/<int:faceId>')
+api.add_resource(FindFace, '/find')
 
 
 @app.route("/")
@@ -382,4 +451,4 @@ def find_post():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0", port=8080)

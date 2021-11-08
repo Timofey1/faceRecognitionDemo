@@ -1,22 +1,22 @@
 import requests
 
-BASE = "http://127.0.0.1:5000/"
-files = {"file": open("image.jpg", "rb")}
-data = {"name":"Fname Lname"}
+BASE = "https://faceapi.nanosemantics.ai/"
+files = {"file": open("image1.png", "rb")}
+data = {"name":"brad pitt"}
 
-# # Find simular faces
-# response = requests.get(BASE+"photoUpl", files=files)
+# Find simular faces
+response = requests.post(BASE+"find", files=files)
 
-# # Photo upl 
-# response = requests.post(BASE+"photoUpl",data=data, files=files)
+# Photo upl
+response = requests.post(BASE+"api",data=data, files=files)
 
-# # Get data from db
-# response = requests.get(BASE+"dbApi/<faceId>")
+# Get data from db
+response = requests.get(BASE+"db/2")
 
-# # Delete data
-# response = requests.delete(BASE+"dbApi/<faceId>")
+# Delete data
+response = requests.delete(BASE+"db/1")
 
-# # Face detector, returns dict with facial areas and landmarks
-# response = requests.post(BASE+"mtcnnFaceApi", files=files)
+# Face detector, returns dict with facial areas and landmarks
+response = requests.post(BASE+"detect", files=files)
 
 # print(response.json())

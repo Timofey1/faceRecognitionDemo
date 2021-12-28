@@ -12,4 +12,4 @@
 ### Options
     - Detector only
     - Compare two loaded faces
-    - Add/Find face in DataBase 
+    - Add/Find face in DataBase (install mongoDB first)

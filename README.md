@@ -7,7 +7,9 @@
 
 ### Installation and startup
     pip install -r requirements.txt
-    python app.py / flask run 
+    python app.py 
+##### or
+    flask run 
 
 ### Options
     - Detector only

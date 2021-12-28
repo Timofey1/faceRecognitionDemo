@@ -8,7 +8,7 @@
 ### Installation and startup
     pip install -r requirements.txt
     python app.py 
-##### or
+### or
     flask run 
 
 ### Options
